@@ -1,0 +1,40 @@
+{% extends 'layout.html' %}
+
+{% block main %}
+<div class="main-content">
+    <p><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br> <br><br><br><br><br><br><br><br></p>
+    <h1>Here is your rooftop image!!</h1>
+    <h3>Draw a polygon over the rooftop image by clicking on the edges of the rooftop.</h3>
+    <div class="canvas-container">
+        <img id="satellite-image" src="{{ image_url }}" alt="Satellite Image" style="display: none;">
+        <canvas id="drawing-canvas"></canvas>
+    </div>
+    <div class="container" >
+        <div class="row align-items-start" >
+            <div class="col">
+                <h5>After outlining the rooftop, click below to calculate the total area within the drawn polygon.</h5>
+
+                <div class="button-container">
+                    <button id="calculate-area-btn" class="btn btn-secondary">Calculate Roof Area</button>
+                </div>
+            </div>
+            <div class="col">
+                <p><br><br></p>
+                <div id="result" class="h3"></div>
+            </div>
+        </div>
+    </div>
+    
+    <h5>Once the area is calculated, click below to extract the selected rooftop portion and visuallize solar panel installation</h5>
+    <div class="button-container">
+        <button id="cut-polygon-btn" class="btn btn-success">Extract Rooftop Portion</button>
+    </div>
+    
+    <div class="image-container">
+    </div>
+</div>
+<!-- Include jQuery from a CDN -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+{% endblock %}

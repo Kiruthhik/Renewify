@@ -1,0 +1,144 @@
+{% extends 'layout.html' %}
+
+{% block main %}
+<p><br><br><br></p>
+<div class="container">
+    <div class="row align-items-start" >
+        <div class="col" >
+            <div>
+                <canvas id="solar-canvas"></canvas>
+            </div>
+        </div>
+        <div class="col">
+            <div>
+                <h5>Visualize your rooftop with solar panels. Adjust the slider to see how different numbers of panels affect your power output.</h5>
+                <p><br><br><br><br><br><br></p>
+                <h5>Use the slider to adjust the number of panels.</h5>
+                <label for="panel-count-slider" class="h2">Panels Count:</label>
+                <input type="range" id="panel-count-slider" min="1" max="{{ panel_count }}" value="10">
+                <span id="panel-count">10</span>
+            </div>
+            <div>
+                <p><br><br><br></p>
+                <h5>The estimated power output per day based on the selected number of panels is displayed below.</h5>
+                <span id="power-output" class="h2">Power Output: 15 kWh</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!--<script src="{{ url_for('static', filename='js/solar_panels.js') }}"></script>-->
+
+<script>
+$(document).ready(function() {
+    const canvas = document.getElementById('solar-canvas');
+    const ctx = canvas.getContext('2d');
+    const slider = document.getElementById('panel-count-slider');
+    const panelCountSpan = document.getElementById('panel-count');
+    const powerOutputSpan = document.getElementById('power-output');
+    
+    const panelWidth = 24;
+    const panelHeight = 13;
+    const transparentBorderSize = 1.5; // Adjust this value as needed
+    const powerPerPanel = 1.5;
+
+    const image = new Image();
+    image.src = '/static/cut_polygon.png'; // Ensure this path is correct
+
+    image.onload = () => {
+        canvas.width = image.width;
+        canvas.height = image.height;
+        drawPanels(parseInt(slider.value));
+    };
+
+    const drawPanels = (panelCount) => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(image, 0, 0);
+
+        $.get('/get_polygon_points', function(data) {
+            if (!data.points) {
+                console.error("No points data received");
+                return;
+            }
+
+            const points = data.points;
+
+            if (!Array.isArray(points) || points.length === 0) {
+                console.error("Points data is not an array or is empty");
+                return;
+            }
+
+            console.log("Polygon points received:", points);
+
+            const scaledPoints = points.map(([x, y]) => {
+                return [x * canvas.width / image.width, y * canvas.height / image.height];
+            });
+
+            ctx.beginPath();
+            ctx.moveTo(scaledPoints[0][0], scaledPoints[0][1]);
+            for (let i = 1; i < scaledPoints.length; i++) {
+                ctx.lineTo(scaledPoints[i][0], scaledPoints[i][1]);
+            }
+            ctx.closePath();
+            ctx.clip();
+
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(scaledPoints[0][0], scaledPoints[0][1]);
+            for (let i = 1; i < scaledPoints.length; i++) {
+                ctx.lineTo(scaledPoints[i][0], scaledPoints[i][1]);
+            }
+            ctx.closePath();
+            ctx.stroke();
+
+            const panelGrid = [];
+            const totalPanelWidth = panelWidth + 2 * transparentBorderSize;
+            const totalPanelHeight = panelHeight + 2 * transparentBorderSize;
+
+            for (let y = 0; y < canvas.height; y += totalPanelHeight) {
+                for (let x = 0; x < canvas.width; x += totalPanelWidth) {
+                    if (panelGrid.length >= panelCount) break;
+                    if (ctx.isPointInPath(x + totalPanelWidth / 2, y + totalPanelHeight / 2)) {
+                        panelGrid.push({ x, y });
+                    }
+                }
+                if (panelGrid.length >= panelCount) break;
+            }
+
+            panelGrid.slice(0, panelCount).forEach(({ x, y }) => {
+                console.log(`Drawing panel at (${x}, ${y})`);
+
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+                ctx.fillRect(x, y, totalPanelWidth, totalPanelHeight);
+
+                ctx.fillStyle = 'white';
+                ctx.fillRect(x + transparentBorderSize, y + transparentBorderSize, panelWidth, panelHeight);
+
+                ctx.fillStyle = 'rgba(0, 0, 132, 1)';
+                ctx.fillRect(x + transparentBorderSize + 1, y + transparentBorderSize + 1, panelWidth - 2, panelHeight - 2);
+
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x + transparentBorderSize + 1, y + transparentBorderSize + 1, panelWidth - 2, panelHeight - 2);
+            });
+
+            const powerOutput = panelCount * powerPerPanel;
+            powerOutputSpan.textContent = `Power Output: ${powerOutput.toFixed(2)} kWh`;
+        }).fail(function(jqXHR, textStatus, errorThrown) {
+            console.error("Error fetching polygon points:", textStatus, errorThrown);
+        });
+    };
+
+    slider.addEventListener('input', function() {
+        const panelCount = parseInt(this.value);
+        panelCountSpan.textContent = panelCount;
+        drawPanels(panelCount);
+    });
+});
+
+</script>
+
+{% endblock %}
